@@ -55,6 +55,7 @@ COPY docker/files/supervisor/celerybeat.conf /etc/supervisor/conf.d/celerybeat.c
 COPY docker/files/supervisor/rabbitmq.conf /etc/supervisor/conf.d/rabbitmq.conf
 COPY docker/files/supervisor/rabbitmq-supervisor /usr/bin/rabbitmq-supervisor
 RUN chmod +x /usr/bin/rabbitmq-supervisor
+COPY docker/files/supervisor/rabbitmq.config /etc/rabbitmq/rabbitmq.config
 
 # Supervisor configuration for Redis
 COPY docker/files/supervisor/redis.conf /etc/supervisor/conf.d/redis.conf
