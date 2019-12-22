@@ -1,32 +1,28 @@
 from multiprocessing import cpu_count
 import os
 
-from beam_integrals import DEFAULT_MAX_MODE, DEFAULT_DECIMAL_PRECISION
 from kombu import Queue
 
 
 ## Environment based settings
 
 MAX_CPU_CORES = os.getenv('MAX_CPU_CORES', cpu_count())
-SERVER_NAME = os.getenv('SERVER_NAME', 'localhost')
 AM_I_SERVER = (os.getenv('COMPUTER_TYPE') == 'server')
 
-BEAM_INTEGRALS_MAX_MODE = int(os.getenv('BEAM_INTEGRALS_MAX_MODE', DEFAULT_MAX_MODE))
-BEAM_INTEGRALS_DECIMAL_PRECISION = int(os.getenv('BEAM_INTEGRALS_DECIMAL_PRECISION', DEFAULT_DECIMAL_PRECISION))
-BEAM_INTEGRALS_NORMALIZE_INTEGRALS_SMALLER_THAN = float(os.getenv('BEAM_INTEGRALS_NORMALIZE_INTEGRALS_SMALLER_THAN', 1e-9))
+PDAJ_THETA_RES = int(os.getenv('PDAJ_THETA_RES', 6))
+PDAJ_L1 = float(os.getenv('PDAJ_L1', 1))
+PDAJ_L2 = float(os.getenv('PDAJ_L2', 1))
+PDAJ_M1 = float(os.getenv('PDAJ_M1', 1))
+PDAJ_M2 = float(os.getenv('PDAJ_M2', 1))
+PDAJ_TMAX = float(os.getenv('PDAJ_TMAX', 30))
+PDAJ_DT = float(os.getenv('PDAJ_DT', 0.01))
 
 if AM_I_SERVER:
-    MONITORING_IS_ACTIVE = bool(int(os.getenv('MONITORING_IS_ACTIVE', '0')))
-    if MONITORING_IS_ACTIVE:
-        MONITORING_SERVER_NAME = os.getenv('MONITORING_SERVER_NAME', 'localhost')
-        MONITORING_SERVER_PORT = int(os.getenv('MONITORING_SERVER_PORT', 2003))
-        MONITORING_INTERVAL = int(os.getenv('MONITORING_INTERVAL', 30))
-        MONITORING_METRIC_PREFIX = os.getenv('MONITORING_METRIC_PREFIX', 'experiments.export_beam_integrals')
+    
+    # HDF5_COMPLIB = os.getenv('HDF5_COMPLIB', 'zlib')
+    # HDF5_COMPLEVEL = int(os.getenv('HDF5_COMPLEVEL', 1))
 
-    HDF5_COMPLIB = os.getenv('HDF5_COMPLIB', 'zlib')
-    HDF5_COMPLEVEL = int(os.getenv('HDF5_COMPLEVEL', 1))
-
-    RESULTS_DIR = os.getenv('RESULTS_DIR', '/tmp/results')
+    RESULTS_DIR = os.getenv('RESULTS_DIR', '/results')
     STATUS_DIR = os.path.join(RESULTS_DIR, 'status')
 
 
@@ -49,7 +45,7 @@ CELERYD_PREFETCH_MULTIPLIER = 1
 
 ## Task result backend settings
 
-CELERY_RESULT_BACKEND = "redis://%s" % SERVER_NAME
+CELERY_RESULT_BACKEND = "redis://redis"
 
 
 ## Message Routing
@@ -69,9 +65,9 @@ else:
 
 class ServerTasksRouter(object):
     def route_for_task(self, task, args=None, kwargs=None):
-        if task.startswith('export_beam_integrals.tasks.server.'):
+        if task.startswith('pdaj.tasks.server.'):
             return {'queue': 'server'}
-        
+
         return None
 
 CELERY_ROUTES = (
@@ -81,7 +77,7 @@ CELERY_ROUTES = (
 
 ## Broker Settings
 
-BROKER_URL = "amqp://%s" % SERVER_NAME
+BROKER_URL = "amqp://rabbitmq"
 CELERY_ACCEPT_CONTENT = ['pickle', 'json']
 
 
@@ -105,20 +101,10 @@ CELERY_ACKS_LATE = True
 ## Worker settings
 
 if AM_I_SERVER:
-    CELERY_IMPORTS = ['export_beam_integrals.tasks.server']
+    CELERY_IMPORTS = ['pdaj.tasks.server']
 else:
-    CELERY_IMPORTS = ['export_beam_integrals.tasks.worker']
+    CELERY_IMPORTS = ['pdaj.tasks.worker']
 
 # HACK: Prevents weird SymPy related memory leaks
 CELERYD_MAX_TASKS_PER_CHILD = 10
 
-
-## Periodic Task Server (celery beat)
-
-if AM_I_SERVER and MONITORING_IS_ACTIVE:
-    CELERYBEAT_SCHEDULE = {
-        'monitor-queues': {
-            'task': 'export_beam_integrals.tasks.server.monitor_queues',
-            'schedule': MONITORING_INTERVAL,
-        },
-    }
