@@ -9,7 +9,6 @@ from celery import chain, chord
 from celery.exceptions import Reject
 import numpy as np
 
-import pdaj as ebi
 from ..app import app
 from .worker import simulate_pendulum
 
@@ -30,13 +29,17 @@ def store_results(filename, results):
 
 @app.task
 def save_result(result):
-    store_results(os.path.join(app.conf.RESULTS_DIR, "result.csv"), result)
+    store_results(os.path.join(app.conf.RESULTS_DIR, "result.csv"), sorted(result))
     return result
 
 @app.task
 def seed_computations(theta_resolution, dt, tmax, L1, L2, m1, m2):
     return chord(
-        (simulate_pendulum.s(theta1_init, theta2_init, dt, tmax, L1, L2, m1, m2) for theta1_init, theta2_init in gen_simulation_model_params(theta_resolution)),
+        (
+            simulate_pendulum.s(theta1_init, theta2_init, dt, tmax, L1, L2, m1, m2)
+            for theta1_init, theta2_init
+            in gen_simulation_model_params(theta_resolution)
+        ),
         save_result.s(),
     ).delay()
 

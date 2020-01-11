@@ -1,10 +1,7 @@
-from math import log
 import numpy as np
 from scipy.integrate import odeint
 from ..app import app
 
-
-SCALE_FACTOR_HELPER = 2.
 g = 9.81
 
 def deriv(y, t, L1, L2, m1, m2):
@@ -38,7 +35,6 @@ def solve(L1, L2, m1, m2, tmax, dt, y0):
 
 @app.task
 def simulate_pendulum(theta1_init, theta2_init, dt, tmax, L1, L2, m1, m2):
-    # Initial conditions: theta1_init, dtheta1_init/dt, theta2_init, dtheta2_init/dt.
     y0 = np.array([theta1_init, 0, theta2_init, 0])
     theta1, theta2, x1, y1, x2, y2 = solve(L1, L2, m1, m2, tmax, dt, y0)
 
